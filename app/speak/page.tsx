@@ -17,7 +17,7 @@ const AudioPlayer: FC = () => {
 
 	const initializeWebSocket = () => {
 		const audioChunks: Blob[] = [];
-		socketRef.current = new WebSocket(`ws://localhost:4000`);
+		socketRef.current = new WebSocket(`ws://localhost:4100`);
 
 		socketRef.current.addEventListener("open", () => {
 			console.log("WebSocket connection established.");
@@ -77,7 +77,7 @@ const AudioPlayer: FC = () => {
 					setButtonState(BUTTON_STATES.PLAYING);
 
 					source.onended = () => {
-						setAudioChunks([]);
+						// setAudioChunks([]);
 						setButtonState(BUTTON_STATES.NO_AUDIO);
 						if (textAreaRef.current) {
 							textAreaRef.current.value = "";

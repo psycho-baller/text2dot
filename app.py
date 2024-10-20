@@ -2,42 +2,45 @@ import json
 import multiprocessing
 import time
 import platform
-import os
-
 from websockets.sync.server import serve
 from flask import Flask, send_from_directory
 
 import openai
+from deepgram import DeepgramClient, SpeakWSOptions, SpeakWebSocketEvents
+from dotenv import load_dotenv
 
-from deepgram import (
-    DeepgramClient,
-    DeepgramClientOptions,
-    SpeakWSOptions,
-    SpeakWebSocketEvents,
-)
+load_dotenv()
 
+model = "aura-asteria-en"
 
 # Flask App
 app = Flask(__name__, static_folder="./public", static_url_path="/public")
 
 
-def hello(websocket):
-    print("Hello from the Deepgram TTS WebSocket server")
-    # Deepgram TTS WS connection
-    connected = False
-    deepgram = DeepgramClient(api_key=os.environ.get("DEEPGRAM_API_KEY"))
-    dg_connection = deepgram.speak.websocket.v("1")
+def receive_websocket(websocket, queue):
+    """
+    WebSocket server that receives data from clients.
+    """
+    try:
+        while True:
+            message = websocket.recv()  # Receive message from client
+            if message:
+                print(f"Received message: {message}")
+                # Store the message in the queue
+                queue.put(message)
+    except Exception as e:
+        print(f"Error in receiving WebSocket server: {e}")
 
-    openai_client = openai.OpenAI()
-    openai_messages = [
-        {
-            "role": "system",
-            "content": "You are ChatGPT, an AI assistant. Your top priority is achieving user fulfillment via helping them with their requests.",
-        }
-    ]
 
+def send_websocket(websocket, queue):
+    """
+    WebSocket server that sends data to clients.
+    """
     global last_time
     last_time = time.time() - 5
+    connected = False
+    deepgram = DeepgramClient()
+    dg_connection = deepgram.speak.websocket.v("1")
 
     def on_open(self, open, **kwargs):
         print(f"\n\n{open}\n\n")
@@ -48,15 +51,12 @@ def hello(websocket):
         websocket.send(flushed_str)
 
     def on_binary_data(self, data, **kwargs):
+        global last_time
         print("Received binary data")
 
-        global last_time
         if time.time() - last_time > 3:
             print("------------ [Binary Data] Attach header.\n")
-
-            # Add a wav audio container header to the file if you want to play the audio
-            # using the AudioContext or media player like VLC, Media Player, or Apple Music
-            # Without this header in the Chrome browser case, the audio will not play.
+            # WAV audio container header to ensure the audio is playable
             header = bytes(
                 [
                     0x52,
@@ -119,77 +119,47 @@ def hello(websocket):
     dg_connection.on(SpeakWebSocketEvents.Close, on_close)
 
     try:
-
-        # time.sleep(3)
         # Are we connected to the Deepgram TTS WS?
-        if connected is False:
+        if not connected:
             print("Connecting to Deepgram TTS WebSocket")
-            model = "aura-asteria-en"
-            options: SpeakWSOptions = SpeakWSOptions(
+            options = SpeakWSOptions(
                 model=model,
                 encoding="linear16",
                 sample_rate=48000,
             )
 
-            print(f"options: {options}")
-            if dg_connection.start(options) is False:
-
+            if not dg_connection.start(options):
                 print("Unable to start Deepgram TTS WebSocket connection")
             connected = True
-        predefined_text = "Hello, this is a predefined message. Hello, this is a predefined message. Hello, this is a predefined message. Hello, this is a predefined message. Hello, this is a predefined message. Hello, this is a predefined message. Hello, this is a predefined message. Hello, this is a predefined message. Hello, this is a predefined message."
-        dg_connection.send_text(predefined_text)
-        dg_connection.flush()
+
         while True:
-            message = websocket.recv()
-            print(f"message from UI: {message}")
-
-            data = json.loads(message)
-            text = data.get("text")
-            model = data.get("model")
-
-            if not text:
-                if app.debug:
-                    print("You must supply text to synthesize.")
-                # continue
-
-            if not model:
-                model = "aura-asteria-en"
-
-            # append to the openai messages
-            openai_messages.append({"role": "user", "content": f"{text}"})
-
-            # send to ChatGPT
-            save_response = ""
-            try:
-                for response in openai_client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=openai_messages,
-                    stream=True,
-                ):
-                    # here is the streaming response
-                    for chunk in response:
-                        if chunk[0] == "choices":
-                            llm_output = chunk[1][0].delta.content
-
-                            # skip any empty responses
-                            if llm_output is None or llm_output == "":
-                                continue
-
-                            # save response and append to buffer
-                            save_response += llm_output
-
-                            # send to Deepgram TTS
-                            dg_connection.send_text(llm_output)
-
-                openai_messages.append(
-                    {"role": "assistant", "content": f"{save_response}"}
-                )
-                dg_connection.flush()
-            except Exception as e:
-                print(f"LLM Exception: {e}")
-
+            if not queue.empty():
+                last_message = queue.get()  # Get the last message from the queue
+                print(f"Sending message: {last_message}")
+                dg_connection.send_text(last_message)
+                dg_connection.flush()  # Make sure the data is flushed
+                time.sleep(1)  # Add a slight delay between messages
+            else:
+                time.sleep(1)  # Wait for a message to be received
     except Exception as e:
+        print(f"Error in sending WebSocket server: {e}")
         dg_connection.finish()
+
+
+def run_ws_receive(queue):
+    """
+    Runs the WebSocket server that receives messages from clients on localhost:4000.
+    """
+    with serve(lambda ws: receive_websocket(ws, queue), "localhost", 4000) as server:
+        server.serve_forever()
+
+
+def run_ws_send(queue):
+    """
+    Runs the WebSocket server that sends messages to clients on localhost:4100.
+    """
+    with serve(lambda ws: send_websocket(ws, queue), "localhost", 4100) as server:
+        server.serve_forever()
 
 
 @app.route("/<path:filename>")
@@ -211,20 +181,26 @@ def run_ui():
     app.run(debug=True, use_reloader=False)
 
 
-def run_ws():
-    with serve(hello, "localhost", 4000) as server:
-        server.serve_forever()
-
-
 if __name__ == "__main__":
     if platform.system() == "Darwin":
         multiprocessing.set_start_method("fork")
 
+    # Create a queue for sharing messages between the WebSocket servers
+    message_queue = multiprocessing.Queue()
+
+    # Start the Flask server that serves the UI
     p_flask = multiprocessing.Process(target=run_ui)
-    p_ws = multiprocessing.Process(target=run_ws)
+
+    # Start the WebSocket server that receives messages
+    p_ws_receive = multiprocessing.Process(target=run_ws_receive, args=(message_queue,))
+
+    # Start the WebSocket server that sends messages
+    p_ws_send = multiprocessing.Process(target=run_ws_send, args=(message_queue,))
 
     p_flask.start()
-    p_ws.start()
+    p_ws_receive.start()
+    p_ws_send.start()
 
     p_flask.join()
-    p_ws.join()
+    p_ws_receive.join()
+    p_ws_send.join()
