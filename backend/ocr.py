@@ -56,8 +56,8 @@ def analyze_image(image_path):
         ],
         "model": "meta-llama/Llama-3.2-90B-Vision-Instruct",
         "max_tokens": 2048,
-        "temperature": 0.7,
-        "top_p": 0.9,
+        "temperature": 0,
+        "top_p": 0.3,
     }
 
     response = requests.post(api, headers=headers, json=payload)
@@ -92,17 +92,17 @@ async def main():
 
                 # Uncomment the following lines to analyze the image
                 # Export the image to a file
-                # cv2.imwrite("image.jpg", frame)
+                cv2.imwrite("image.jpg", frame)
 
                 # Analyze the image using the hyperbolic API
-                # result = analyze_image("./image.jpg")
+                result = analyze_image("./image.jpg")
                 # Extract the content from the result
-                # content = result["choices"][0]["message"]["content"]
-                # print("Image analysis result:", content)
+                content = result["choices"][0]["message"]["content"]
+                print("Image analysis result:", content)
 
-                # if content != "There is no text in the image.":
-                #     print("Sending text to WebSocket")
-                #     await send_text_to_websocket(websocket, content)
+                if content != "There is no text in the image.":
+                    print("Sending text to WebSocket")
+                    await send_text_to_websocket(websocket, content)
 
                 # Update the last analysis time
                 last_analysis_time = current_time
@@ -117,5 +117,3 @@ async def main():
 
 # Run the main function
 asyncio.run(main())
-cap.release()
-cv2.destroyAllWindows()
