@@ -1,86 +1,109 @@
-// /app/page.tsx (or any component)
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-// import { text } from "stream/consumers";
+import { Button } from "@/components/ui/button";
+import { useEffect, useRef, useState, type FC } from "react";
 
-export default function WebSocketAudioPlayer() {
-	const [audioChunks, setAudioChunks] = useState<Blob[]>([]); // Buffer for incoming audio chunks
-	const socketRef = useRef<WebSocket | null>(null); // WebSocket reference
-	const audioContextRef = useRef<AudioContext | null>(null); // AudioContext reference
+const BUTTON_STATES = {
+	NO_AUDIO: "no_audio",
+	LOADING: "loading",
+	PLAYING: "playing",
+};
 
-	useEffect(() => {
-		// Initialize WebSocket connection
-		const socket = new WebSocket(`ws://localhost:4000`); // Adjust the URL as per your backend setup
-		socketRef.current = socket;
+const AudioPlayer: FC = () => {
+	const [buttonState, setButtonState] = useState(BUTTON_STATES.NO_AUDIO);
+	// const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+	const socketRef = useRef<WebSocket | null>(null);
+	const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
 
-		socket.addEventListener("open", () => {
-			console.log("WebSocket connected");
+	const initializeWebSocket = () => {
+		const audioChunks: Blob[] = [];
+		socketRef.current = new WebSocket(`ws://localhost:4000`);
+
+		socketRef.current.addEventListener("open", () => {
+			console.log("WebSocket connection established.");
 		});
 
-		socket.addEventListener("message", async (event) => {
-			console.log("Received message:", event.data);
-			if (event.data instanceof Blob) {
-				// Append received audio chunk to the buffer
-				setAudioChunks((prevChunks) => [...prevChunks, event.data]);
-			}
-
+		socketRef.current.addEventListener("message", (event) => {
 			if (typeof event.data === "string") {
-				// Handle incoming string data (e.g., "Flushed" event)
-				const message = JSON.parse(event.data);
-				if (message.type === "Flushed") {
-					console.log("Audio Flushed, playing audio now.");
+				console.log("Incoming text data:", event.data);
+				const msg = JSON.parse(event.data);
 
-					// When all audio chunks have been received, create a Blob and play it
+				if (msg.type === "Flushed") {
+					console.log("Flushed received");
 					const blob = new Blob(audioChunks, { type: "audio/wav" });
-					setAudioChunks([]); // Reset the buffer
-
-					// Play the audio
-					await playAudio(blob);
+					console.log("Total audio chunks length:", audioChunks.length);
+					console.log("Blob size:", blob.size);
+					if (blob.size > 0) {
+						playAudio(blob);
+					} else {
+						console.error("Blob is empty, no audio to play.");
+					}
 				}
 			}
-		});
 
-		socket.addEventListener("close", () => {
-			console.log("WebSocket closed");
-		});
-
-		socket.addEventListener("error", (error) => {
-			console.error("WebSocket error:", error);
-		});
-
-		return () => {
-			// Cleanup WebSocket when the component unmounts
-			if (socketRef.current) {
-				socketRef.current.close();
+			if (event.data instanceof Blob) {
+				console.log("Incoming blob data:", event.data);
+				audioChunks.push(event.data);
+				// setAudioChunks((prevChunks) => [...prevChunks, event.data]);
 			}
-		};
-	}, [audioChunks]);
+		});
 
-	const playAudio = async (audioBlob: Blob) => {
-		console.log("Playing audio...", audioBlob);
-		// Create or reuse an AudioContext
-		let audioContext = audioContextRef.current;
-		if (!audioContext) {
-			audioContext = new AudioContext();
-			audioContextRef.current = audioContext;
-		}
+		socketRef.current.addEventListener("close", () => {
+			console.log("WebSocket closed");
+			setButtonState(BUTTON_STATES.NO_AUDIO);
+		});
 
-		// Convert Blob to ArrayBuffer
-		const arrayBuffer = await audioBlob.arrayBuffer();
-
-		// Decode the audio data
-		const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-		// Create a buffer source and play the audio
-		const source = audioContext.createBufferSource();
-		source.buffer = audioBuffer;
-		source.connect(audioContext.destination);
-		source.start();
-
-		// Log when the audio ends
-		source.onended = () => {
-			console.log("Audio playback finished.");
-		};
+		socketRef.current.addEventListener("error", (error) => {
+			console.error("WebSocket error:", error);
+			setButtonState(BUTTON_STATES.NO_AUDIO);
+		});
 	};
-}
+
+	const playAudio = (blob: Blob) => {
+		const audioContext = new AudioContext();
+		const reader = new FileReader();
+
+		reader.onload = function () {
+			const arrayBuffer = this.result as ArrayBuffer;
+			console.log("Array buffer size:", arrayBuffer.byteLength);
+			audioContext.decodeAudioData(
+				arrayBuffer,
+				(buffer) => {
+					const source = audioContext.createBufferSource();
+					source.buffer = buffer;
+					source.connect(audioContext.destination);
+					source.start();
+
+					setButtonState(BUTTON_STATES.PLAYING);
+
+					source.onended = () => {
+						setAudioChunks([]);
+						setButtonState(BUTTON_STATES.NO_AUDIO);
+						if (textAreaRef.current) {
+							textAreaRef.current.value = "";
+						}
+					};
+				},
+				(error) => {
+					console.error("Error decoding audio data:", error);
+				},
+			);
+		};
+		reader.readAsArrayBuffer(blob);
+	};
+
+	return (
+		<main className="flex flex-col items-center justify-center h-screen">
+			<Button
+				type="button"
+				variant={"secondary"}
+				id="connect-button"
+				onClick={initializeWebSocket}
+			>
+				Connect
+			</Button>
+		</main>
+	);
+};
+
+export default AudioPlayer;

@@ -22,30 +22,25 @@ app = Flask(__name__, static_folder="./public", static_url_path="/public")
 
 
 def hello(websocket):
+    print("Hello from the Deepgram TTS WebSocket server")
     # Deepgram TTS WS connection
     connected = False
-    print("XXX")
-    deepgram = DeepgramClient(
-        api_key="54f663601e6491ae76f32c3a0952e398c741dd3b"  # os.environ.get("DEEPGRAM_API_KEY"),
-    )
-    print("dg_connection1")
+    deepgram = DeepgramClient(api_key=os.environ.get("DEEPGRAM_API_KEY"))
     dg_connection = deepgram.speak.websocket.v("1")
-    print(dg_connection)
-    # openai_client = openai.OpenAI(
-    #     api_key=os.environ.get("OPENAI_API_KEY"),
-    # )
-    # openai_messages = [
-    #     {
-    #         "role": "system",
-    #         "content": "You are ChatGPT, an AI assistant. Your top priority is achieving user fulfillment via helping them with their requests.",
-    #     }
-    # ]
+
+    openai_client = openai.OpenAI()
+    openai_messages = [
+        {
+            "role": "system",
+            "content": "You are ChatGPT, an AI assistant. Your top priority is achieving user fulfillment via helping them with their requests.",
+        }
+    ]
 
     global last_time
     last_time = time.time() - 5
 
     def on_open(self, open, **kwargs):
-        print(f"\n\nhi: {open}\n\n")
+        print(f"\n\n{open}\n\n")
 
     def on_flush(self, flushed, **kwargs):
         print(f"\n\n{flushed}\n\n")
@@ -123,45 +118,78 @@ def hello(websocket):
     dg_connection.on(SpeakWebSocketEvents.Flushed, on_flush)
     dg_connection.on(SpeakWebSocketEvents.Close, on_close)
 
-    # lorem_ipsum_text = "Lorem"
-    # dg_connection.send_text(lorem_ipsum_text)
+    try:
 
-    # try:
-    #     while True:
-    #         # message = "hello"
-    #         # print(f"message from UI: {message}")
+        # time.sleep(3)
+        # Are we connected to the Deepgram TTS WS?
+        if connected is False:
+            print("Connecting to Deepgram TTS WebSocket")
+            model = "aura-asteria-en"
+            options: SpeakWSOptions = SpeakWSOptions(
+                model=model,
+                encoding="linear16",
+                sample_rate=48000,
+            )
 
-    #         # data = json.loads(message)
-    #         # text = data.get("text")
-    #         # model = data.get("model")
-    #         text = "hello"
-    #         print(f"to UI: {text}")
+            print(f"options: {options}")
+            if dg_connection.start(options) is False:
 
-    #         if not text:
-    #             if app.debug:
-    #                 print("You must supply text to synthesize.")
-    #             continue
+                print("Unable to start Deepgram TTS WebSocket connection")
+            connected = True
+        predefined_text = "Hello, this is a predefined message. Hello, this is a predefined message. Hello, this is a predefined message. Hello, this is a predefined message. Hello, this is a predefined message. Hello, this is a predefined message. Hello, this is a predefined message. Hello, this is a predefined message. Hello, this is a predefined message."
+        dg_connection.send_text(predefined_text)
+        dg_connection.flush()
+        while True:
+            message = websocket.recv()
+            print(f"message from UI: {message}")
 
-    #         if not model:
-    #             model = "aura-asteria-en"
+            data = json.loads(message)
+            text = data.get("text")
+            model = data.get("model")
 
-    #         # Are we connected to the Deepgram TTS WS?
-    #         if connected is False:
-    #             print("Not connected to Deepgram TTS WS")
-    #             options: SpeakWSOptions = SpeakWSOptions(
-    #                 model=model,
-    #                 encoding="linear16",
-    #                 sample_rate=48000,
-    #             )
+            if not text:
+                if app.debug:
+                    print("You must supply text to synthesize.")
+                # continue
 
-    #             if dg_connection.start(options) is False:
-    #                 if app.debug:
-    #                     print("Unable to start Deepgram TTS WebSocket connection")
-    #                 raise Exception("Unable to start Deepgram TTS WebSocket connection")
-    #             connected = True
+            if not model:
+                model = "aura-asteria-en"
 
-    # except Exception as e:
-    #     dg_connection.finish()
+            # append to the openai messages
+            openai_messages.append({"role": "user", "content": f"{text}"})
+
+            # send to ChatGPT
+            save_response = ""
+            try:
+                for response in openai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=openai_messages,
+                    stream=True,
+                ):
+                    # here is the streaming response
+                    for chunk in response:
+                        if chunk[0] == "choices":
+                            llm_output = chunk[1][0].delta.content
+
+                            # skip any empty responses
+                            if llm_output is None or llm_output == "":
+                                continue
+
+                            # save response and append to buffer
+                            save_response += llm_output
+
+                            # send to Deepgram TTS
+                            dg_connection.send_text(llm_output)
+
+                openai_messages.append(
+                    {"role": "assistant", "content": f"{save_response}"}
+                )
+                dg_connection.flush()
+            except Exception as e:
+                print(f"LLM Exception: {e}")
+
+    except Exception as e:
+        dg_connection.finish()
 
 
 @app.route("/<path:filename>")
