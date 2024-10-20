@@ -79,6 +79,9 @@ async def main():
         print("Starting image analysis")
         last_analysis_time = time.time()
 
+        # Set to keep track of sent texts
+        sent_texts = set()
+
         while True:
             ret, frame = cap.read()
             cv2.imshow("frame", frame)
@@ -100,8 +103,12 @@ async def main():
                 print("Image analysis result:", content)
 
                 if content != "There is no text in the image.":
-                    print("Sending text to WebSocket")
-                    await send_text_to_websocket(websocket, content)
+                    # Check if the content has already been sent
+                    if content not in sent_texts:
+                        print("Sending text to WebSocket")
+                        await send_text_to_websocket(websocket, content)
+                        # Add the content to the set of sent texts
+                        sent_texts.add(content)
 
                 # Update the last analysis time
                 last_analysis_time = current_time
