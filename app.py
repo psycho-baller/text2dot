@@ -137,6 +137,7 @@ def send_websocket(websocket, queue):
                 print("Unable to start Deepgram TTS WebSocket connection")
             connected = True
 
+        spoken_words = 
         while True:
             if not queue.empty():
                 last_message = queue.get()  # Get the last message from the queue

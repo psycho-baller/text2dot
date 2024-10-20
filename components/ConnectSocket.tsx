@@ -9,7 +9,7 @@ const BUTTON_STATES = {
 	PLAYING: "playing",
 };
 
-const AudioPlayer: FC = () => {
+const ConnectSocket: FC = () => {
 	const [buttonState, setButtonState] = useState(BUTTON_STATES.NO_AUDIO);
 	const socketRef = useRef<WebSocket | null>(null);
 	const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -124,7 +124,15 @@ const AudioPlayer: FC = () => {
 	};
 
 	return (
-		<main className="flex flex-col items-center justify-center h-screen">
+		<section
+			className="flex flex-col items-center justify-center"
+			style={{
+				height: "100%",
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+			}}
+		>
 			{buttonState === BUTTON_STATES.PLAYING ||
 			buttonState === BUTTON_STATES.LOADING ? (
 				<Button
@@ -133,7 +141,7 @@ const AudioPlayer: FC = () => {
 					id="disconnect-button"
 					onClick={handleDisconnect} // Use the new handleDisconnect function
 				>
-					Disconnect
+					Disconnect Camera Device
 				</Button>
 			) : (
 				<Button
@@ -142,7 +150,7 @@ const AudioPlayer: FC = () => {
 					id="connect-button"
 					onClick={initializeWebSocket}
 				>
-					Connect
+					Connect Camera Device
 				</Button>
 			)}
 			{buttonState === BUTTON_STATES.LOADING && (
@@ -151,8 +159,8 @@ const AudioPlayer: FC = () => {
 			{buttonState === BUTTON_STATES.PLAYING && (
 				<p className="text-center">Playing...</p>
 			)}
-		</main>
+		</section>
 	);
 };
 
-export default AudioPlayer;
+export default ConnectSocket;
