@@ -1,9 +1,11 @@
-import json
+import os
+from gtts import gTTS
 import multiprocessing
 import time
 import platform
 from websockets.sync.server import serve
 from flask import Flask, send_from_directory
+from flask_cors import CORS  # Import CORS
 
 import openai
 from deepgram import DeepgramClient, SpeakWSOptions, SpeakWebSocketEvents
@@ -15,6 +17,9 @@ model = "aura-asteria-en"
 
 # Flask App
 app = Flask(__name__, static_folder="./public", static_url_path="/public")
+CORS(
+    app, resources={r"/*": {"origins": "http://localhost:3000"}}
+)  # Enable CORS for localhost:3000
 
 
 def receive_websocket(websocket, queue):
@@ -165,6 +170,16 @@ def run_ws_send(queue):
 @app.route("/<path:filename>")
 def serve_others(filename):
     return send_from_directory(app.static_folder, filename)
+
+
+@app.route("/audio/connected")
+def serve_connected_audio():
+    text = "Device successfully connected."
+    tts = gTTS(text=text, lang="en")
+    audio_file_path = "connected.mp3"
+    tts.save(audio_file_path)
+
+    return send_from_directory(os.getcwd(), audio_file_path)
 
 
 @app.route("/assets/<path:filename>")
