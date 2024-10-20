@@ -88,7 +88,6 @@ async def main():
             # Check if n seconds have passed since the last analysis
             if current_time - last_analysis_time >= n:
                 print("Analyzing image")
-                await send_text_to_websocket(websocket, "content")  # Send a message
 
                 # Uncomment the following lines to analyze the image
                 # Export the image to a file
