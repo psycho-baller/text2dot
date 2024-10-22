@@ -1,20 +1,25 @@
-## Getting Started
+<h1 align="center">Text2Dot - CalHacks 11 hackathon winner</h1>
 
-First, create a `.env.local` file in the root of the project by copying the `.env.example` file:
+[Devpost submission](https://devpost.com/software/text-to-dot)
 
-```bash
-cp .env.example .env.local
-```
-and fill in the necessary environment variables.
+## Inspiration
+Our team focuses primarily on implementing innovative technologies to spark positive change. In line with these ideals, we decided to explore the potential impact of a text reading software that not only provided an additional layer of accessibility for blind and deafblind individuals. Through these efforts, we discovered that despite previous attempts to solve similar problems, solutions were often extremely expensive and incongruous. According to many visually challenged advocates these technologies often lacked real-world application and were specific to online texts or readings which limited their opportunities in everyday tasks like reading books or scanning over menus. Upon further research into afflicted groups, we discovered that there was additionally a large population of people who were both deaf and blind which stopped them from utilizing any forms of auditory input as an alternative, significantly obstructing their means of communication. Employing a very human centered design rooted in various personal accounts and professional testimony, we were able to develop a universal design that provides the visually and dual sensory impaired to experience the world from a new lens. By creating a handheld text to braille and speech generator, we are able to revolutionize the prospects of interpersonal communication for these individuals.
+## What it does
+This solution utilizes a singular piece with two modules, a video camera to decipher text, and a set of solenoids that imitates a standard Grade 2 Braille Grid. This portable accessory is intended to be utilized by a visually impaired or blind deaf individual when they’re attempting to analyze a physical text. This three finger supplement, equipped with a live action camera and sensitive solenoid components, is capable of utilizing a live camera feed to discern the diction of a physical text. Moving forward, the scanned text is moved to an A.I application to clean up the text for either auditory or sensory output in the form of TTS and braille. The text is then adapted into an audio format through a web application or to the classic 6 cells present in the Braille dictionary. Users are given a brief moment to make sense of each braille letter before the system automatically iterates through the remainder of the text. This technology effectively provides users with an alternative method to receive information that isn’t ordinarily accessible to them, granting a more authentic and amplified understanding of the world around them. In this unique application of these technologies, those who are hard of seeing and/or dual sensory impaired receive a more genuine appreciation for texts.
+## How we built it
+As our project required two extremely different pieces, we decided to split up our resources in hopes of tackling both problems at the same time. Regardless, we needed to set firm goals and plan out our required resources or timeline which helped us stay on schedule and formulate a final product that fully utilized our expertise. 
+In terms of hardware, we were somewhat limited for the first half of the hackathon as we had to purchase many of our materials and were unable to complete much of this work till later. We started by identifying a potential circuit design and creating a rigid structure to house our components. From there we simply spent a large amount of time actually implementing our theoretical circuit and applying it to our housing model in addition to cleaning the whole product up. 
+For software, we mostly had problems with connecting each of the pieces after building them out. We first created an algorithm that could take a camera feed and produce a coherent string of text. This would then be run through an AI text to speech generator that could decipher any gibberish. Finally, these texts would be sent through to either be read out loud or be compared against a dictionary to create a binary code that would dictate the on/off states off our solenoids. 
+Finally, we prototyped our product and tested it to see what we could improve in our final implementation to both increase efficiency and decrease latency.
 
-Then, install the dependencies:
+## Challenges we ran into
+This project was extremely technical and ambitious which meant that it was plagued with difficulties. As a large portion of the project relied on its hardware and implementing complementary materials to formulate a cohesive product, there were countless problems throughout the building phase. We often had incompatible parts whether it be cables, Voltage output/input, or even sizing and scaling issues, we were constantly scrambling to alter, scavenge, and adapt materials for uncommon use cases. Even our main board didn’t produce enough power, leading to an unusual usage of a dehumidifier charger and balled up aluminum foil as a makeshift power bank. All of these mechanical complexities followed by a difficult software end of the project led to an innovative and reworked solution that maintained applicative efficiency. These modifications even continued just hours before the submission deadline when we revamped the entire physical end of our project to make use of newly acquired materials using a more efficient modeling technique. These last second improvements gave our product a more polished and adept edge, making a more impactful and satisfying design.
+Software wise we also strove to uncover the underappreciated features from our various APIs and tools which often didn’t coincide with our team’s strengths. As we had to simultaneously build out an effective product while troubleshooting our software side, we often ran into incompetencies and struggles. Regardless, we were able to overcome these adversities and produce an impressive result.
 
-```bash
-bun i
-```
+## Accomplishments that we're proud of
+We are proud that we were able to overcome the various difficulties that arose throughout our process and to still showcase the level of success that we did even given such a short timeframe. Our team came in with some members having never done a hackathon before and we made extremely ambitious goals that we were unsure we could uphold. However, we were able to effectively work as a team to develop a final product that clearly represents our initial intentions for the project.
 
-Finally, run the development server:
-
-```bash
-bun dev
-```
+## What we learned
+As a result of the many cutting-edge sponsors and new technological constraints, our whole team was able to draw from new more effective tools to increase efficiency and quality of our product. Through our careful planning and consistent collaboration, we experienced the future of software and progressed in our intricate technical knowledge within our fields and across specializations. and Because of the cross discipline nature of this project. Additionally, we became more flexible with what materials we needed to build out our hardware applications and especially utilized new TTS technologies to amplify the impact of our projects. In the future, we intend to continue to develop these crucial skills that we obtained at Cal Hacks 11.0, working towards a more accessible future.
+## What's next for Text to Dot
+We would like to work on integrating a more refined design to the hardware component of our project. Unforeseen circumstances with the solenoid led to our final design needing to be adjusted beyond the design of the original model, which could be rectified in future iterations.
